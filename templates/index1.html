@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>师幼空间AI模型</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* 通用样式 */
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+    header {
+      background-color: #0052cc;
+      color: #fff;
+      padding: 15px 20px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 30px auto;
+      background-color: #fff;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h2, h3 {
+      margin-bottom: 15px;
+      color: #0052cc;
+    }
+    /* 上传区域 */
+    .upload-section {
+      border: 2px dashed #bfbfbf;
+      border-radius: 6px;
+      padding: 30px;
+      text-align: center;
+      background-color: #fafafa;
+      transition: background-color 0.3s, border-color 0.3s;
+      margin-bottom: 25px;
+    }
+    .upload-section.drag-over {
+      background-color: #e6f7ff;
+      border-color: #1890ff;
+    }
+    .upload-button {
+      background-color: #1890ff;
+      border: none;
+      color: #fff;
+      padding: 12px 25px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background-color 0.3s;
+    }
+    .upload-button:hover {
+      background-color: #40a9ff;
+    }
+    /* 状态提示 */
+    .status-message {
+      font-size: 16px;
+      margin: 15px 0;
+      padding: 10px;
+      border-radius: 4px;
+      display: none;
+    }
+    .status-success {
+      background-color: #f6ffed;
+      border: 1px solid #b7eb8f;
+      color: #389e0d;
+    }
+    .status-error {
+      background-color: #fff1f0;
+      border: 1px solid #ffa39e;
+      color: #cf1322;
+    }
+    /* 进度条组件 */
+    .progress-container {
+      margin: 20px 0;
+      display: none;
+    }
+    .progress-step {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .progress-label {
+      width: 180px;
+      font-size: 14px;
+      color: #555;
+    }
+    .progress-bar {
+      flex: 1;
+      background-color: #e8e8e8;
+      border-radius: 4px;
+      overflow: hidden;
+      height: 18px;
+      margin-right: 10px;
+    }
+    .progress-bar-inner {
+      height: 100%;
+      width: 0;
+      background-color: #1890ff;
+      transition: width 0.5s ease;
+    }
+    .progress-percentage {
+      width: 50px;
+      text-align: right;
+      font-size: 14px;
+      color: #333;
+    }
+    /* 关键帧预览 */
+    .keyframes-container {
+      display: flex;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .keyframe-image {
+      width: 120px;
+      margin: 5px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      transition: transform 0.3s;
+      cursor: pointer;
+    }
+    .keyframe-image:hover {
+      transform: scale(1.05);
+    }
+    /* 分析区域 */
+    .result-section {
+      margin-top: 20px;
+      display: none;
+    }
+    .analysis-controls {
+      margin-bottom: 15px;
+    }
+    .analyze-button {
+      background-color: #52c41a;
+      border: none;
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 15px;
+      transition: background-color 0.3s;
+    }
+    .analyze-button:hover {
+      background-color: #73d13d;
+    }
+    .analysis-result {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background-color: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #e9ecef;
+      font-size: 14px;
+      line-height: 1.6;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+    /* 响应式 */
+    @media (max-width: 600px) {
+      .progress-label {
+        width: 140px;
+      }
+      .keyframe-image {
+        width: 100px;
+      }
+    }
+    /* 添加 CSS 保护规则 */
+    .analysis-container {
+      min-height: 50px; /* 确保容器存在 */
+      margin-top: 15px;
+      padding: 10px;
+      border: 1px solid #eee;
+    }
+    .analysis-result pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: inherit;
+      max-height: 400px;
+      overflow-y: auto;
+      padding: 10px;
+      background: #fff;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>师幼空间AI模型</h1>
+  </header>
+  <div id="root" class="container"></div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <script>
+    (function() {
+      'use strict';
+      const App = {
+        init: function() {
+          this.cacheElements();
+          this.render();
+          this.bindEvents();
+        },
+        cacheElements: function() {
+          this.root = document.getElementById('root');
+        },
+        render: function() {
+          // 创建主要区域
+          this.container = this.createElement('div', { class: 'app-container' });
+          this.uploadSection = this.createUploadSection();
+          this.statusMessage = this.createElement('div', { class: 'status-message' });
+          this.progressContainer = this.createProgressContainer();
+          this.keyframesContainer = this.createElement('div', { class: 'keyframes-container' });
+          this.resultSection = this.createResultSection();
+  
+          this.container.appendChild(this.uploadSection);
+          this.container.appendChild(this.statusMessage);
+          this.container.appendChild(this.progressContainer);
+          this.container.appendChild(this.keyframesContainer);
+          this.container.appendChild(this.resultSection);
+          this.root.appendChild(this.container);
+        },
+        createElement: function(tag, attrs, innerHTML) {
+          const el = document.createElement(tag);
+          if (attrs) {
+            if (attrs.class) el.className = attrs.class;
+            if (attrs.id) el.id = attrs.id;
+          }
+          if (innerHTML) el.innerHTML = innerHTML;
+          return el;
+        },
+        createUploadSection: function() {
+          const section = this.createElement('div', { class: 'upload-section' });
+          section.innerHTML = `
+            <h2>上传视频</h2>
+            <p>支持的格式：MP4</p>
+            <input type="file" id="fileInput" accept=".mp4" style="display:none">
+            <button class="upload-button" id="uploadButton">选择文件</button>
+            <p>或将文件拖拽到此处</p>
+          `;
+          return section;
+        },
+        createProgressContainer: function() {
+          const container = this.createElement('div', { class: 'progress-container' });
+          container.innerHTML = `
+            <div class="progress-step" data-step="upload">
+              <span class="progress-label">视频上传</span>
+              <div class="progress-bar"><div class="progress-bar-inner" id="progress-upload"></div></div>
+              <span class="progress-percentage" id="percent-upload">0%</span>
+            </div>
+            <div class="progress-step" data-step="extract">
+              <span class="progress-label">关键帧提取</span>
+              <div class="progress-bar"><div class="progress-bar-inner" id="progress-extract"></div></div>
+              <span class="progress-percentage" id="percent-extract">0%</span>
+            </div>
+            <div class="progress-step" data-step="vision">
+              <span class="progress-label">视觉模型分析</span>
+              <div class="progress-bar"><div class="progress-bar-inner" id="progress-vision"></div></div>
+              <span class="progress-percentage" id="percent-vision">0%</span>
+            </div>
+            <div class="progress-step" data-step="behavior">
+              <span class="progress-label">行为分析</span>
+              <div class="progress-bar"><div class="progress-bar-inner" id="progress-behavior"></div></div>
+              <span class="progress-percentage" id="percent-behavior">0%</span>
+            </div>
+          `;
+          return container;
+        },
+        createResultSection: function() {
+          const section = this.createElement('div', { class: 'result-section' });
+          section.innerHTML = `
+            <h3>分析控制</h3>
+            <div class="analysis-controls">
+              <button class="analyze-button vision-analysis">视觉模型分析</button>
+              <button class="analyze-button behavior-analysis" style="display:none; margin-left:10px;">儿童行为分析</button>
+            </div>
+            <div class="analysis-result"></div>
+          `;
+          return section;
+        },
+        bindEvents: function() {
+          this.fileInput = document.getElementById('fileInput');
+          this.uploadButton = document.getElementById('uploadButton');
+          this.uploadButton.addEventListener('click', () => this.fileInput.click());
+          this.fileInput.addEventListener('change', e => this.handleFileSelect(e));
+          this.setupDragAndDrop(this.uploadSection);
+  
+          this.visionAnalysisBtn = this.resultSection.querySelector('.vision-analysis');
+          this.behaviorAnalysisBtn = this.resultSection.querySelector('.behavior-analysis');
+          this.visionAnalysisBtn.addEventListener('click', () => this.handleVisionAnalysis());
+          this.behaviorAnalysisBtn.addEventListener('click', () => this.handleBehaviorAnalysis());
+        },
+        setupDragAndDrop: function(section) {
+          const events = ['dragenter', 'dragover', 'dragleave', 'drop'];
+          events.forEach(eventName => {
+            section.addEventListener(eventName, (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }, false);
+          });
+          ['dragenter', 'dragover'].forEach(eventName => {
+            section.addEventListener(eventName, () => section.classList.add('drag-over'));
+          });
+          ['dragleave', 'drop'].forEach(eventName => {
+            section.addEventListener(eventName, () => section.classList.remove('drag-over'));
+          });
+          section.addEventListener('drop', (e) => {
+            const file = e.dataTransfer.files[0];
+            if (file && file.type === 'video/mp4') {
+              this.handleFileUpload(file);
+            } else {
+              alert('请上传 MP4 格式的视频文件');
+            }
+          });
+        },
+        updateStepProgress: function(step, percent, text = '') {
+          const progressBar = document.getElementById(`progress-${step}`);
+          const percentSpan = document.getElementById(`percent-${step}`);
+          progressBar.style.width = percent + '%';
+          percentSpan.textContent = percent + '% ' + text;
+        },
+        setStatus: function(message, type = 'success') {
+          this.statusMessage.style.display = 'block';
+          this.statusMessage.textContent = message;
+          this.statusMessage.className = 'status-message ' + (type === 'error' ? 'status-error' : 'status-success');
+        },
+        clearStatus: function() {
+          this.statusMessage.style.display = 'none';
+          this.statusMessage.textContent = '';
+        },
+        handleFileSelect: function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            this.handleFileUpload(file);
+          }
+        },
+        async handleFileUpload(file) {
+          const formData = new FormData();
+          formData.append('file', file);
+          this.progressContainer.style.display = 'block';
+          this.updateStepProgress('upload', 0, '开始上传');
+          this.setStatus('正在上传视频，请稍候...');
+  
+          try {
+            const response = await fetch('/api/upload', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (result.code === 200) {
+              this.updateStepProgress('upload', 100, '上传完成');
+              this.setStatus(`成功提取 ${result.data.keyframes.length} 个关键帧`);
+              this.updateStepProgress('extract', 100, '提取完成');
+              this.displayKeyframes(result.data.keyframes);
+              this.resultSection.style.display = 'block';
+            } else {
+              this.setStatus('上传失败：' + (result.error || '未知错误'), 'error');
+            }
+          } catch (error) {
+            this.setStatus('上传出错：' + error.message, 'error');
+          }
+        },
+        displayKeyframes: function(keyframes) {
+          this.keyframesContainer.innerHTML = '';
+          keyframes.forEach(url => {
+            const img = document.createElement('img');
+            img.src = url;
+            img.className = 'keyframe-image';
+            this.keyframesContainer.appendChild(img);
+          });
+        },
+        async handleVisionAnalysis() {
+          const keyframeImages = this.keyframesContainer.querySelectorAll('.keyframe-image');
+          if (keyframeImages.length === 0) {
+            alert('请先上传视频');
+            return;
+          }
+
+          // 添加进度动画
+          let progress = 0;
+          const progressInterval = setInterval(() => {
+            progress = Math.min(progress + 1, 99); // 最大到99%
+            this.updateStepProgress('vision', progress, '分析中...');
+          }, 1000); // 每1000毫秒增加1%
+  
+          // 收集所有关键帧URL（相对路径）
+          const keyframes = Array.from(keyframeImages).map(img => {
+            const url = new URL(img.src);
+            return url.pathname;
+          });
+  
+        //   this.updateStepProgress('vision', 30, '发送请求');
+        //   this.setStatus('正在分析视频内容...');
+          this.setStatus('正在分析视频内容...');
+  
+          try {
+            const response = await fetch('/api/vision-analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ keyframes })
+            });
+
+            clearInterval(progressInterval); // 清除定时器
+            this.updateStepProgress('vision', 100, '完成');
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const result = await response.json();
+            if (result.code === 200) {
+            //   this.updateStepProgress('vision', 100, '完成');
+              this.behaviorAnalysisBtn.style.display = 'inline-block';
+              
+              const resultDiv = this.resultSection.querySelector('.analysis-result');
+              resultDiv.innerHTML = `
+                <div class="result-section-title">视频描述</div>
+                <pre class="description">${result.data.description}</pre>
+              `;
+              this.setStatus('视觉模型分析完成');
+            } else {
+              throw new Error(result.data || '分析失败');
+            }
+          } catch (error) {
+            clearInterval(progressInterval); // 出错时也要清除定时器
+            this.setStatus(`分析出错: ${error.message}`, 'error');
+            this.updateStepProgress('vision', 0, '失败');
+          }
+        },
+        async handleBehaviorAnalysis() {
+          const descriptionElem = this.resultSection.querySelector('.description');
+          if (!descriptionElem) {
+            alert('请先完成视觉模型分析');
+            return;
+          }
+  
+          // 添加进度动画
+          let progress = 0;
+          const progressInterval = setInterval(() => {
+            progress = Math.min(progress + 1, 99); // 最大到99%
+            this.updateStepProgress('behavior', progress, '分析中...');
+          }, 200); // 每100毫秒增加1%
+        //   this.updateStepProgress('behavior', 30, '发送请求');
+        //   this.setStatus('正在分析儿童行为...');
+  
+          try {
+            const response = await fetch('/api/behavior-analysis', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                description: descriptionElem.textContent
+              })
+            });
+  
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const result = await response.json();
+            if (result.code === 200) {
+              const analysisContainer = this.resultSection.querySelector('.analysis-container') 
+                  || this.createAnalysisContainer();
+                  
+              analysisContainer.innerHTML = marked.parse(result.data.analysis);
+            //   this.updateStepProgress('behavior', 100, '完成');
+              clearInterval(progressInterval); // 清除定时器
+              this.updateStepProgress('behavior', 100, '完成');
+              this.setStatus('行为分析完成！');
+            } else {
+              throw new Error(result.data || '分析失败');
+            }
+          } catch (error) {
+            clearInterval(progressInterval); // 出错也清除定时器
+            this.setStatus(`分析出错: ${error.message}`, 'error');
+            this.updateStepProgress('behavior', 0, '失败');
+          }
+        },
+        createAnalysisContainer: function() {
+          const container = document.createElement('div');
+          container.className = 'analysis-container';
+          this.resultSection.appendChild(container);
+          return container;
+        },
+        delay: function(ms) {
+          return new Promise(resolve => setTimeout(resolve, ms));
+        }
+      };
+  
+      App.init();
+    })();
+  </script>
+
+<div id="root"></div>
+<a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head><title>Video Analysis</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='video.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script defer src="{{ url_for('static', filename='video.js') }}"></script>
+</head>
+<body>
+<div id="root"></div>
+<a href="{{ url_for('logout') }}">Logout</a>
+
+
+</body>
+</html>
